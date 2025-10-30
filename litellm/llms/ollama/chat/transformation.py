@@ -295,6 +295,11 @@ class OllamaChatConfig(BaseConfig):
                 m, BaseModel
             ):  # avoid message serialization issues - https://github.com/BerriAI/litellm/issues/5319
                 m = m.model_dump(exclude_none=True)
+
+            ollama_message = OllamaChatCompletionMessage(
+                role=cast(str, m.get("role")),
+            )
+
             tool_calls = m.get("tool_calls")
             if tool_calls is not None and isinstance(tool_calls, list):
                 new_tools: List[OllamaToolCall] = []
@@ -312,20 +317,18 @@ class OllamaChatConfig(BaseConfig):
                         )
                         new_tools.append(ollama_tool_call)
                 cast(dict, m)["tool_calls"] = new_tools
+                ollama_message["tool_calls"] = new_tools
             reasoning_content, parsed_content = _extract_reasoning_content(
                 cast(dict, m)
             )
             content_str = convert_content_list_to_str(cast(AllMessageValues, m))
             images = extract_images_from_message(cast(AllMessageValues, m))
 
-            ollama_message = OllamaChatCompletionMessage(
-                role=cast(str, m.get("role")),
-            )
             if reasoning_content is not None:
                 ollama_message["thinking"] = reasoning_content
             if content_str is not None:
                 ollama_message["content"] = content_str
-            if images is not None:
+            if images is not None and len(images) > 0:
                 ollama_message["images"] = images
 
             new_messages.append(ollama_message)
